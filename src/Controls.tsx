@@ -12,11 +12,14 @@ interface SliderProps {
   unit?: string
   decimals?: number
   disabled?: boolean
+  readOnly?: boolean
   onChange: (v: number) => void
 }
 
-function Slider({ label, value, min, max, step, unit = '', decimals = 1, disabled, onChange }: SliderProps) {
+function Slider({ label, value, min, max, step, unit = '', decimals = 1, disabled, readOnly, onChange }: SliderProps) {
   const pct = max > min ? ((value - min) / (max - min)) * 100 : 0
+  const inputDisabled = disabled || readOnly
+  const stateClass = disabled ? ' ctrl-disabled' : readOnly ? ' ctrl-readonly' : ''
 
   const handleNumberChange = (rawValue: string) => {
     if (rawValue === '') return
@@ -28,7 +31,7 @@ function Slider({ label, value, min, max, step, unit = '', decimals = 1, disable
   }
 
   return (
-    <div className={`ctrl-row${disabled ? ' ctrl-disabled' : ''}`}>
+    <div className={`ctrl-row${stateClass}`}>
       <div className="ctrl-header">
         <span className="ctrl-label">{label}</span>
         <label className="ctrl-number-wrap">
@@ -39,7 +42,8 @@ function Slider({ label, value, min, max, step, unit = '', decimals = 1, disable
             max={max}
             step={step}
             value={value.toFixed(decimals)}
-            disabled={disabled}
+            disabled={inputDisabled}
+            readOnly={readOnly}
             onChange={e => handleNumberChange(e.target.value)}
           />
           <span className="ctrl-unit">{unit.trim()}</span>
@@ -52,7 +56,7 @@ function Slider({ label, value, min, max, step, unit = '', decimals = 1, disable
         max={max}
         step={step}
         value={value}
-        disabled={disabled}
+        disabled={inputDisabled}
         onChange={e => onChange(Number(e.target.value))}
         style={{ '--pct': `${pct}%` } as CSSProperties}
       />
@@ -66,18 +70,24 @@ interface SegmentProps {
   label: string
   options: { id: string; label: string }[]
   value: string
+  disabled?: boolean
+  readOnly?: boolean
   onChange: (id: string) => void
 }
 
-function Segment({ label, options, value, onChange }: SegmentProps) {
+function Segment({ label, options, value, disabled, readOnly, onChange }: SegmentProps) {
+  const buttonDisabled = disabled || readOnly
+  const stateClass = disabled ? ' ctrl-disabled' : readOnly ? ' ctrl-readonly' : ''
+
   return (
-    <div className="ctrl-row ctrl-row-inline">
+    <div className={`ctrl-row ctrl-row-inline${stateClass}`}>
       <span className="ctrl-label">{label}</span>
       <div className="ctrl-seg">
         {options.map(opt => (
           <button
             key={opt.id}
             className={`seg-btn${value === opt.id ? ' seg-active' : ''}`}
+            disabled={buttonDisabled}
             onClick={() => onChange(opt.id)}
           >
             {opt.label}
@@ -94,6 +104,9 @@ interface Props {
   params: CylinderParams
   onChange: (p: CylinderParams) => void
   mobileHidden?: boolean
+  readOnly?: boolean
+  showDimensions: boolean
+  onToggleDimensions: () => void
 }
 
 const FACE_OPTIONS = [
@@ -106,9 +119,21 @@ const HOLE_FACE_OPTIONS = [
   { id: 'bottom', label: 'Bottom' },
 ]
 
+const DIMENSION_OPTIONS = [
+  { id: 'on',  label: 'On'  },
+  { id: 'off', label: 'Off' },
+]
+
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
-export default function Controls({ params, onChange, mobileHidden = false }: Props) {
+export default function Controls({
+  params,
+  onChange,
+  mobileHidden = false,
+  readOnly = false,
+  showDimensions,
+  onToggleDimensions,
+}: Props) {
   const maxWallThickness = Math.max(0.1, params.diameter / 2 - 0.1)
   const maxHoleDiameter = Math.max(0, params.diameter - 0.2)
 
@@ -139,13 +164,26 @@ export default function Controls({ params, onChange, mobileHidden = false }: Pro
     <aside className={`ctrl-panel${mobileHidden ? ' ctrl-panel-mobile-hidden' : ''}`}>
       {/* Header */}
       <header className="ctrl-title">
-        <span className="ctrl-brand">AO.</span>
-        <span className="ctrl-subtitle">Cylinder</span>
+        <div>
+          <span className="ctrl-brand">AO.</span>
+          <span className="ctrl-subtitle">Cylinder</span>
+        </div>
+        {readOnly && <span className="ctrl-badge">Preview</span>}
       </header>
 
       {/* Geometry */}
       <div className="ctrl-section">
         <p className="ctrl-section-heading">Geometry</p>
+        <Segment
+          label="Dimensions"
+          options={DIMENSION_OPTIONS}
+          value={showDimensions ? 'on' : 'off'}
+          onChange={id => {
+            if ((id === 'on') !== showDimensions) {
+              onToggleDimensions()
+            }
+          }}
+        />
         <Slider
           label="Diameter"
           value={params.diameter}
@@ -153,6 +191,7 @@ export default function Controls({ params, onChange, mobileHidden = false }: Pro
           max={20}
           step={0.1}
           unit=" cm"
+          readOnly={readOnly}
           onChange={set('diameter')}
         />
         <Slider
@@ -162,6 +201,7 @@ export default function Controls({ params, onChange, mobileHidden = false }: Pro
           max={maxWallThickness}
           step={0.1}
           unit=" cm"
+          readOnly={readOnly}
           onChange={set('wallThickness')}
         />
         <Slider
@@ -171,6 +211,7 @@ export default function Controls({ params, onChange, mobileHidden = false }: Pro
           max={20}
           step={0.1}
           unit=" cm"
+          readOnly={readOnly}
           onChange={set('height')}
         />
       </div>
@@ -184,12 +225,14 @@ export default function Controls({ params, onChange, mobileHidden = false }: Pro
           label="Top"
           options={FACE_OPTIONS}
           value={params.topOpen ? 'open' : 'closed'}
+          readOnly={readOnly}
           onChange={v => set('topOpen')(v === 'open')}
         />
         <Segment
           label="Bottom"
           options={FACE_OPTIONS}
           value={params.bottomOpen ? 'open' : 'closed'}
+          readOnly={readOnly}
           onChange={v => set('bottomOpen')(v === 'open')}
         />
       </div>
@@ -203,6 +246,7 @@ export default function Controls({ params, onChange, mobileHidden = false }: Pro
           label="Face"
           options={HOLE_FACE_OPTIONS}
           value={params.holeFace}
+          readOnly={readOnly}
           onChange={v => set('holeFace')(v as 'top' | 'bottom')}
         />
         <Slider
@@ -213,6 +257,7 @@ export default function Controls({ params, onChange, mobileHidden = false }: Pro
           step={0.1}
           unit=" cm"
           disabled={holeFaceIsOpen}
+          readOnly={readOnly}
           onChange={set('holeDiameter')}
         />
         {holeFaceIsOpen && (

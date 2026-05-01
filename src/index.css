@@ -29,6 +29,21 @@ body {
   overflow: hidden;
 }
 
+.dimension-label {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-surface);
+  font-family: 'Space Mono', monospace;
+  font-size: 5px;
+  line-height: 1.2;
+  text-shadow: 0 1px 2px rgba(2, 1, 34, 0.85);
+  letter-spacing: 0;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
 /* ── Controls panel ─────────────────────────────────────────────────────────── */
 
 .ctrl-panel {
@@ -51,15 +66,71 @@ body {
 }
 .ctrl-panel::-webkit-scrollbar { display: none; }
 
+.app-toolbar {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 276px;
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+
+.controls-hidden .app-toolbar {
+  right: 14px;
+}
+
+.ctrl-mobile-toggle,
+.ctrl-share-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  border: 1px solid rgba(242, 243, 174, 0.16);
+  border-radius: 3px;
+  background: rgba(2, 1, 34, 0.76);
+  color: var(--color-accent);
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
 .ctrl-mobile-toggle {
-  display: none;
+  padding: 0 12px;
+}
+
+.ctrl-share-icon {
+  width: 34px;
+  padding: 0;
+}
+
+.ctrl-share-icon svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ctrl-panel-mobile-hidden {
+  transform: translateX(calc(100% + 2px));
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────────── */
 
 .ctrl-title {
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
   margin-bottom: 28px;
 }
@@ -73,8 +144,19 @@ body {
 }
 
 .ctrl-subtitle {
+  margin-left: 8px;
   font-size: 11px;
   color: rgba(242, 243, 174, 0.45);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ctrl-badge {
+  padding: 3px 7px;
+  border: 1px solid rgba(252, 158, 79, 0.38);
+  border-radius: 3px;
+  color: var(--color-accent);
+  font-size: 9px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -242,6 +324,30 @@ body {
   pointer-events: none;
 }
 
+.ctrl-disabled .seg-btn,
+.seg-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.ctrl-readonly .ctrl-number {
+  opacity: 1;
+  color: var(--color-muted);
+  -webkit-text-fill-color: var(--color-muted);
+  background: rgba(2, 1, 34, 0.42);
+}
+
+.ctrl-readonly .ctrl-range {
+  opacity: 1;
+  cursor: default;
+  pointer-events: none;
+}
+
+.ctrl-readonly .seg-btn:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
 /* ── Segmented buttons ──────────────────────────────────────────────────────── */
 
 .ctrl-seg {
@@ -293,25 +399,8 @@ body {
 }
 
 @media (max-width: 720px) {
-  .ctrl-mobile-toggle {
-    position: absolute;
-    top: 14px;
-    left: 14px;
-    z-index: 3;
-    display: inline-flex;
-    align-items: center;
-    min-height: 34px;
-    padding: 0 12px;
-    border: 1px solid rgba(242, 243, 174, 0.16);
-    border-radius: 3px;
-    background: rgba(2, 1, 34, 0.76);
-    color: var(--color-accent);
-    font-family: 'Space Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+  .app-toolbar {
+    right: 14px;
   }
 
   .ctrl-panel {

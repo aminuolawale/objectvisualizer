@@ -29,6 +29,70 @@ const DEFAULT_PARAMS: CylinderParams = {
   holeFace: 'top',
 }
 
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
+
+function sanitizeParams(params: CylinderParams): CylinderParams {
+  const diameter = clamp(params.diameter, 2, 20)
+  const wallThickness = clamp(params.wallThickness, 0.1, Math.max(0.1, diameter / 2 - 0.1))
+  const height = clamp(params.height, 1, 20)
+  const holeDiameter = clamp(params.holeDiameter, 0, Math.max(0, diameter - 0.2))
+
+  return {
+    diameter,
+    wallThickness,
+    height,
+    topOpen: params.topOpen,
+    bottomOpen: params.bottomOpen,
+    holeDiameter,
+    holeFace: params.holeFace,
+  }
+}
+
+function numberParam(searchParams: URLSearchParams, key: string, fallback: number) {
+  const value = Number(searchParams.get(key))
+  return Number.isFinite(value) ? value : fallback
+}
+
+function paramsFromUrl(): { params: CylinderParams; readOnly: boolean; showDimensions: boolean } {
+  const searchParams = new URLSearchParams(window.location.search)
+
+  if (searchParams.size === 0) {
+    return { params: DEFAULT_PARAMS, readOnly: false, showDimensions: true }
+  }
+
+  return {
+    readOnly: searchParams.get('preview') === '1',
+    showDimensions: searchParams.get('dims') !== '0',
+    params: sanitizeParams({
+      diameter: numberParam(searchParams, 'd', DEFAULT_PARAMS.diameter),
+      wallThickness: numberParam(searchParams, 'w', DEFAULT_PARAMS.wallThickness),
+      height: numberParam(searchParams, 'h', DEFAULT_PARAMS.height),
+      topOpen: searchParams.get('top') === 'open',
+      bottomOpen: searchParams.get('bottom') === 'open',
+      holeDiameter: numberParam(searchParams, 'hole', DEFAULT_PARAMS.holeDiameter),
+      holeFace: searchParams.get('face') === 'bottom' ? 'bottom' : 'top',
+    }),
+  }
+}
+
+function buildPreviewUrl(params: CylinderParams, showDimensions: boolean) {
+  const url = new URL(window.location.href)
+  const safeParams = sanitizeParams(params)
+
+  url.search = ''
+  url.searchParams.set('preview', '1')
+  url.searchParams.set('d', safeParams.diameter.toFixed(1))
+  url.searchParams.set('w', safeParams.wallThickness.toFixed(1))
+  url.searchParams.set('h', safeParams.height.toFixed(1))
+  url.searchParams.set('top', safeParams.topOpen ? 'open' : 'closed')
+  url.searchParams.set('bottom', safeParams.bottomOpen ? 'open' : 'closed')
+  url.searchParams.set('hole', safeParams.holeDiameter.toFixed(1))
+  url.searchParams.set('face', safeParams.holeFace)
+  url.searchParams.set('dims', showDimensions ? '1' : '0')
+
+  return url.toString()
+}
+
 const ssaoProps = {
   blendFunction: BlendFunction.MULTIPLY,
   samples: 24,
@@ -39,16 +103,34 @@ const ssaoProps = {
 } as ComponentProps<typeof SSAO>
 
 export default function App() {
-  const [params, setParams] = useState<CylinderParams>(DEFAULT_PARAMS)
+  const initialPreview = paramsFromUrl()
+  const [params, setParams] = useState<CylinderParams>(initialPreview.params)
   const [controlsVisible, setControlsVisible] = useState(true)
+  const [showDimensions, setShowDimensions] = useState(initialPreview.showDimensions)
+  const [shareStatus, setShareStatus] = useState('')
+  const readOnly = initialPreview.readOnly
 
   const sceneHeight = params.height * CM_TO_SCENE_UNIT
   const sceneDiameter = params.diameter * CM_TO_SCENE_UNIT
   const shadowY = -(sceneHeight / 2 + 0.02)
   const shadowScale = Math.max(7, sceneDiameter * 2.1)
 
+  const handleShare = async () => {
+    const previewUrl = buildPreviewUrl(params, showDimensions)
+
+    try {
+      await navigator.clipboard.writeText(previewUrl)
+      setShareStatus('Copied')
+    } catch {
+      window.prompt('Preview link', previewUrl)
+      setShareStatus('Ready')
+    }
+
+    window.setTimeout(() => setShareStatus(''), 1800)
+  }
+
   return (
-    <div className="app-shell">
+    <div className={`app-shell${controlsVisible ? '' : ' controls-hidden'}`}>
       <Canvas
         shadows
         dpr={[1, 2]}
@@ -85,7 +167,7 @@ export default function App() {
         {/* Near-zero ambient so shadows are actually dark */}
         <ambientLight intensity={0.03} />
 
-        <HollowCylinder params={params} />
+        <HollowCylinder params={params} showDimensions={showDimensions} />
 
         <ContactShadows
           position={[0, shadowY, 0]}
@@ -97,7 +179,7 @@ export default function App() {
           frames={1}
         />
 
-        <EffectComposer>
+        <EffectComposer enableNormalPass>
           <SSAO {...ssaoProps} />
         </EffectComposer>
 
@@ -113,16 +195,41 @@ export default function App() {
         />
       </Canvas>
 
-      <button
-        type="button"
-        className="ctrl-mobile-toggle"
-        aria-expanded={controlsVisible}
-        onClick={() => setControlsVisible(visible => !visible)}
-      >
-        {controlsVisible ? 'Hide Controls' : 'Show Controls'}
-      </button>
+      <div className="app-toolbar">
+        <button
+          type="button"
+          className="ctrl-mobile-toggle"
+          aria-expanded={controlsVisible}
+          onClick={() => setControlsVisible(visible => !visible)}
+        >
+          {controlsVisible ? 'Hide Controls' : 'Show Controls'}
+        </button>
 
-      <Controls params={params} onChange={setParams} mobileHidden={!controlsVisible} />
+        {!readOnly && (
+          <button
+            type="button"
+            className="ctrl-share-icon"
+            aria-label={shareStatus || 'Copy preview link'}
+            title={shareStatus || 'Copy preview link'}
+            onClick={handleShare}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
+              <path d="M12 16V4" />
+              <path d="m7 9 5-5 5 5" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      <Controls
+        params={params}
+        onChange={setParams}
+        mobileHidden={!controlsVisible}
+        readOnly={readOnly}
+        showDimensions={showDimensions}
+        onToggleDimensions={() => setShowDimensions(visible => !visible)}
+      />
     </div>
   )
 }
