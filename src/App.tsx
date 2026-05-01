@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import * as THREE from 'three'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, ContactShadows, Environment } from '@react-three/drei'
+import { STLExporter } from 'three/examples/jsm/exporters/STLExporter'
+import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter'
 import HollowCylinder from './HollowCylinder'
 import Controls from './Controls'
 
@@ -98,6 +100,7 @@ export default function App() {
   const [showDimensions, setShowDimensions] = useState(initialPreview.showDimensions)
   const [shareStatus, setShareStatus] = useState('')
   const readOnly = initialPreview.readOnly
+  const modelRef = useRef<THREE.Group>(null)
 
   const sceneHeight = params.height * CM_TO_SCENE_UNIT
   const sceneDiameter = params.diameter * CM_TO_SCENE_UNIT
@@ -116,6 +119,34 @@ export default function App() {
     }
 
     window.setTimeout(() => setShareStatus(''), 1800)
+  }
+
+  const handleExport = (format: 'stl' | 'obj') => {
+    if (!modelRef.current) return
+
+    let data: string | Uint8Array
+    let filename = `cylinder-${params.diameter}x${params.height}`
+    let mimeType = 'text/plain'
+
+    if (format === 'stl') {
+      const exporter = new STLExporter()
+      data = exporter.parse(modelRef.current, { binary: true })
+      filename += '.stl'
+      mimeType = 'application/octet-stream'
+    } else {
+      const exporter = new OBJExporter()
+      data = exporter.parse(modelRef.current)
+      filename += '.obj'
+      mimeType = 'text/plain'
+    }
+
+    const blob = new Blob([data], { type: mimeType })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.click()
+    URL.revokeObjectURL(url)
   }
 
   return (
@@ -156,7 +187,7 @@ export default function App() {
         {/* Near-zero ambient so shadows are actually dark */}
         <ambientLight intensity={0.03} />
 
-        <HollowCylinder params={params} showDimensions={showDimensions} />
+        <HollowCylinder ref={modelRef} params={params} showDimensions={showDimensions} />
 
         <ContactShadows
           position={[0, shadowY, 0]}
@@ -214,6 +245,7 @@ export default function App() {
         readOnly={readOnly}
         showDimensions={showDimensions}
         onToggleDimensions={() => setShowDimensions(visible => !visible)}
+        onExport={handleExport}
       />
     </div>
   )

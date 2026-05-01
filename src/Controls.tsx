@@ -107,6 +107,7 @@ interface Props {
   readOnly?: boolean
   showDimensions: boolean
   onToggleDimensions: () => void
+  onExport?: (format: 'stl' | 'obj') => void
 }
 
 const FACE_OPTIONS = [
@@ -133,6 +134,7 @@ export default function Controls({
   readOnly = false,
   showDimensions,
   onToggleDimensions,
+  onExport,
 }: Props) {
   const maxWallThickness = Math.max(0.1, params.diameter / 2 - 0.1)
   const maxHoleDiameter = Math.max(0, params.diameter - 0.2)
@@ -264,6 +266,23 @@ export default function Controls({
           <p className="ctrl-note">Face is open — close it to cut a hole</p>
         )}
       </div>
+
+      {!readOnly && (
+        <>
+          <div className="ctrl-divider" />
+          <div className="ctrl-section">
+            <p className="ctrl-section-heading">Export</p>
+            <div className="ctrl-export-group">
+              <button className="ctrl-btn-outline" onClick={() => onExport?.('stl')}>
+                Export STL
+              </button>
+              <button className="ctrl-btn-outline" onClick={() => onExport?.('obj')}>
+                Export OBJ
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Hint */}
       <p className="ctrl-hint">drag · scroll · double-click to reset</p>

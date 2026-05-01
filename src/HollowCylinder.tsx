@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react'
+import { useMemo, useEffect, forwardRef } from 'react'
 import * as THREE from 'three'
 import { Html, Line } from '@react-three/drei'
 import { CM_TO_SCENE_UNIT, type CylinderParams } from './App'
@@ -99,7 +99,7 @@ function DimensionLabels({ params, outerRadius, innerRadius, sceneHeight, hasVis
   )
 }
 
-export default function HollowCylinder({ params, showDimensions }: Props) {
+const HollowCylinder = forwardRef<THREE.Group, Props>(({ params, showDimensions }, ref) => {
   const { diameter, wallThickness, height, topOpen, bottomOpen, holeDiameter, holeFace } = params
 
   const outerRadius = Math.max(0.05, (diameter / 2) * CM_TO_SCENE_UNIT)
@@ -115,8 +115,6 @@ export default function HollowCylinder({ params, showDimensions }: Props) {
     outerRadius * 0.08
   )
 
-  // Open face: annular ring across the wall thickness.
-  // Closed face: disk, optionally with a centered hole.
   const topCapInnerR = topOpen ? innerRadius : (holeFace === 'top' && hasRequestedHole ? requestedHoleRadius : 0)
   const bottomCapInnerR = bottomOpen ? innerRadius : (holeFace === 'bottom' && hasRequestedHole ? requestedHoleRadius : 0)
 
@@ -136,7 +134,6 @@ export default function HollowCylinder({ params, showDimensions }: Props) {
   const showTopInnerChamfer = topEdgeRadius > 0.001 && topEdgeRadius < outerRadius - chamferSize
   const showBottomInnerChamfer = bottomEdgeRadius > 0.001 && bottomEdgeRadius < outerRadius - chamferSize
 
-  // MeshPhysicalMaterial: clearcoat layer adds a sharp specular highlight on top
   const material = useMemo(() =>
     new THREE.MeshPhysicalMaterial({
       color: MATERIAL_COLOR,
@@ -150,58 +147,56 @@ export default function HollowCylinder({ params, showDimensions }: Props) {
 
   return (
     <group>
-      {/* Outer cylindrical wall */}
-      <mesh material={material} castShadow receiveShadow>
-        <cylinderGeometry args={[outerRadius, outerRadius, wallHeight, RADIAL_SEGMENTS, 1, true]} />
-      </mesh>
-
-      {/* Inner cylindrical wall */}
-      <mesh material={material} castShadow receiveShadow>
-        <cylinderGeometry args={[innerRadius, innerRadius, wallHeight, RADIAL_SEGMENTS, 1, true]} />
-      </mesh>
-
-      <ChamferRing material={material} radius={outerRadius} y={sceneHeight / 2} direction="top" side="outer" size={chamferSize} />
-      <ChamferRing material={material} radius={outerRadius} y={-sceneHeight / 2} direction="bottom" side="outer" size={chamferSize} />
-
-      {/* Top cap */}
-      {showTopCap && (
-        <mesh
-          material={material}
-          castShadow
-          receiveShadow
-          position={[0, sceneHeight / 2, 0]}
-          rotation={[-Math.PI / 2, 0, 0]}
-        >
-          {topCapInnerRadius > 0 ? (
-            <ringGeometry args={[topCapInnerRadius, capOuterRadius, RADIAL_SEGMENTS]} />
-          ) : (
-            <circleGeometry args={[capOuterRadius, RADIAL_SEGMENTS]} />
-          )}
+      <group ref={ref}>
+        <mesh material={material} castShadow receiveShadow>
+          <cylinderGeometry args={[outerRadius, outerRadius, wallHeight, RADIAL_SEGMENTS, 1, true]} />
         </mesh>
-      )}
-      {showTopInnerChamfer && (
-        <ChamferRing material={material} radius={topEdgeRadius} y={sceneHeight / 2} direction="top" side="inner" size={chamferSize} />
-      )}
 
-      {/* Bottom cap */}
-      {showBottomCap && (
-        <mesh
-          material={material}
-          castShadow
-          receiveShadow
-          position={[0, -sceneHeight / 2, 0]}
-          rotation={[Math.PI / 2, 0, 0]}
-        >
-          {bottomCapInnerRadius > 0 ? (
-            <ringGeometry args={[bottomCapInnerRadius, capOuterRadius, RADIAL_SEGMENTS]} />
-          ) : (
-            <circleGeometry args={[capOuterRadius, RADIAL_SEGMENTS]} />
-          )}
+        <mesh material={material} castShadow receiveShadow>
+          <cylinderGeometry args={[innerRadius, innerRadius, wallHeight, RADIAL_SEGMENTS, 1, true]} />
         </mesh>
-      )}
-      {showBottomInnerChamfer && (
-        <ChamferRing material={material} radius={bottomEdgeRadius} y={-sceneHeight / 2} direction="bottom" side="inner" size={chamferSize} />
-      )}
+
+        <ChamferRing material={material} radius={outerRadius} y={sceneHeight / 2} direction="top" side="outer" size={chamferSize} />
+        <ChamferRing material={material} radius={outerRadius} y={-sceneHeight / 2} direction="bottom" side="outer" size={chamferSize} />
+
+        {showTopCap && (
+          <mesh
+            material={material}
+            castShadow
+            receiveShadow
+            position={[0, sceneHeight / 2, 0]}
+            rotation={[-Math.PI / 2, 0, 0]}
+          >
+            {topCapInnerRadius > 0 ? (
+              <ringGeometry args={[topCapInnerRadius, capOuterRadius, RADIAL_SEGMENTS]} />
+            ) : (
+              <circleGeometry args={[capOuterRadius, RADIAL_SEGMENTS]} />
+            )}
+          </mesh>
+        )}
+        {showTopInnerChamfer && (
+          <ChamferRing material={material} radius={topEdgeRadius} y={sceneHeight / 2} direction="top" side="inner" size={chamferSize} />
+        )}
+
+        {showBottomCap && (
+          <mesh
+            material={material}
+            castShadow
+            receiveShadow
+            position={[0, -sceneHeight / 2, 0]}
+            rotation={[Math.PI / 2, 0, 0]}
+          >
+            {bottomCapInnerRadius > 0 ? (
+              <ringGeometry args={[bottomCapInnerRadius, capOuterRadius, RADIAL_SEGMENTS]} />
+            ) : (
+              <circleGeometry args={[capOuterRadius, RADIAL_SEGMENTS]} />
+            )}
+          </mesh>
+        )}
+        {showBottomInnerChamfer && (
+          <ChamferRing material={material} radius={bottomEdgeRadius} y={-sceneHeight / 2} direction="bottom" side="inner" size={chamferSize} />
+        )}
+      </group>
 
       {showDimensions && (
         <DimensionLabels
@@ -214,4 +209,6 @@ export default function HollowCylinder({ params, showDimensions }: Props) {
       )}
     </group>
   )
-}
+})
+
+export default HollowCylinder
