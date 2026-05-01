@@ -8,6 +8,7 @@ import HollowCylinder from './HollowCylinder'
 import Controls from './Controls'
 
 export interface CylinderParams {
+  diameter: number
   wallThickness: number
   height: number
   topOpen: boolean
@@ -16,9 +17,12 @@ export interface CylinderParams {
   holeFace: 'top' | 'bottom'
 }
 
+export const CM_TO_SCENE_UNIT = 0.2
+
 const DEFAULT_PARAMS: CylinderParams = {
-  wallThickness: 0.18,
-  height: 1.8,
+  diameter: 10,
+  wallThickness: 0.9,
+  height: 9,
   topOpen: false,
   bottomOpen: false,
   holeDiameter: 0,
@@ -36,11 +40,15 @@ const ssaoProps = {
 
 export default function App() {
   const [params, setParams] = useState<CylinderParams>(DEFAULT_PARAMS)
+  const [controlsVisible, setControlsVisible] = useState(true)
 
-  const shadowY = -(params.height / 2 + 0.02)
+  const sceneHeight = params.height * CM_TO_SCENE_UNIT
+  const sceneDiameter = params.diameter * CM_TO_SCENE_UNIT
+  const shadowY = -(sceneHeight / 2 + 0.02)
+  const shadowScale = Math.max(7, sceneDiameter * 2.1)
 
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
+    <div className="app-shell">
       <Canvas
         shadows
         dpr={[1, 2]}
@@ -82,7 +90,7 @@ export default function App() {
         <ContactShadows
           position={[0, shadowY, 0]}
           opacity={0.70}
-          scale={7}
+          scale={shadowScale}
           blur={3.0}
           far={2.5}
           color="#000018"
@@ -105,7 +113,16 @@ export default function App() {
         />
       </Canvas>
 
-      <Controls params={params} onChange={setParams} />
+      <button
+        type="button"
+        className="ctrl-mobile-toggle"
+        aria-expanded={controlsVisible}
+        onClick={() => setControlsVisible(visible => !visible)}
+      >
+        {controlsVisible ? 'Hide Controls' : 'Show Controls'}
+      </button>
+
+      <Controls params={params} onChange={setParams} mobileHidden={!controlsVisible} />
     </div>
   )
 }

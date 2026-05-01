@@ -1,9 +1,9 @@
 import { useMemo, useEffect } from 'react'
 import * as THREE from 'three'
-import type { CylinderParams } from './App'
+import { CM_TO_SCENE_UNIT, type CylinderParams } from './App'
 
-const OUTER_RADIUS = 1
 const RADIAL_SEGMENTS = 96
+const CHAMFER_CM = 0.18
 
 const MATERIAL_COLOR  = '#cec8aa'
 const MATERIAL_PROPS  = { metalness: 0.02, roughness: 0.42, envMapIntensity: 0.18 } as const
@@ -12,18 +12,68 @@ interface Props {
   params: CylinderParams
 }
 
+interface ChamferProps {
+  material: THREE.Material
+  radius: number
+  y: number
+  direction: 'top' | 'bottom'
+  side: 'outer' | 'inner'
+  size: number
+}
+
+function ChamferRing({ material, radius, y, direction, side, size }: ChamferProps) {
+  const innerSide = side === 'inner'
+  const topEdge = direction === 'top'
+  const topRadius = innerSide
+    ? radius + (topEdge ? size : 0)
+    : radius - (topEdge ? size : 0)
+  const bottomRadius = innerSide
+    ? radius + (topEdge ? 0 : size)
+    : radius - (topEdge ? 0 : size)
+  const centerY = topEdge ? y - size / 2 : y + size / 2
+
+  return (
+    <mesh material={material} castShadow receiveShadow position={[0, centerY, 0]}>
+      <cylinderGeometry args={[topRadius, bottomRadius, size, RADIAL_SEGMENTS, 1, true]} />
+    </mesh>
+  )
+}
+
 export default function HollowCylinder({ params }: Props) {
-  const { wallThickness, height, topOpen, bottomOpen, holeDiameter, holeFace } = params
+  const { diameter, wallThickness, height, topOpen, bottomOpen, holeDiameter, holeFace } = params
 
-  const innerRadius = Math.max(0.005, OUTER_RADIUS - wallThickness)
+  const outerRadius = Math.max(0.05, (diameter / 2) * CM_TO_SCENE_UNIT)
+  const sceneHeight = Math.max(0.05, height * CM_TO_SCENE_UNIT)
+  const sceneWallThickness = Math.min(wallThickness * CM_TO_SCENE_UNIT, outerRadius - 0.02)
+  const innerRadius = Math.max(0.02, outerRadius - sceneWallThickness)
+  const requestedHoleRadius = Math.max(0, (holeDiameter / 2) * CM_TO_SCENE_UNIT)
+  const hasRequestedHole = requestedHoleRadius > 0.0001
+  const chamferSize = Math.min(
+    CHAMFER_CM * CM_TO_SCENE_UNIT,
+    sceneHeight * 0.08,
+    sceneWallThickness * 0.35,
+    outerRadius * 0.08
+  )
 
-  // Open face → annular ring bridging inner/outer wall gap
-  // Closed face → full disk (inner radius = hole radius, 0 when no hole)
-  const topCapInnerR    = topOpen    ? innerRadius : (holeFace === 'top'    ? holeDiameter / 2 : 0)
-  const bottomCapInnerR = bottomOpen ? innerRadius : (holeFace === 'bottom' ? holeDiameter / 2 : 0)
+  // Open face: annular ring across the wall thickness.
+  // Closed face: disk, optionally with a centered hole.
+  const topCapInnerR = topOpen ? innerRadius : (holeFace === 'top' && hasRequestedHole ? requestedHoleRadius : 0)
+  const bottomCapInnerR = bottomOpen ? innerRadius : (holeFace === 'bottom' && hasRequestedHole ? requestedHoleRadius : 0)
 
-  const showTopCap    = topCapInnerR    < OUTER_RADIUS - 0.001
-  const showBottomCap = bottomCapInnerR < OUTER_RADIUS - 0.001
+  const clampedTopCapInnerR = Math.min(topCapInnerR, outerRadius - 0.001)
+  const clampedBottomCapInnerR = Math.min(bottomCapInnerR, outerRadius - 0.001)
+  const hasTopInnerEdge = topOpen || (holeFace === 'top' && hasRequestedHole)
+  const hasBottomInnerEdge = bottomOpen || (holeFace === 'bottom' && hasRequestedHole)
+  const showTopCap = clampedTopCapInnerR < outerRadius - 0.001
+  const showBottomCap = clampedBottomCapInnerR < outerRadius - 0.001
+  const wallHeight = Math.max(0.01, sceneHeight - chamferSize * 2)
+  const capOuterRadius = Math.max(0.001, outerRadius - chamferSize)
+  const topCapInnerRadius = hasTopInnerEdge ? Math.min(clampedTopCapInnerR + chamferSize, capOuterRadius - 0.001) : 0
+  const bottomCapInnerRadius = hasBottomInnerEdge ? Math.min(clampedBottomCapInnerR + chamferSize, capOuterRadius - 0.001) : 0
+  const topEdgeRadius = hasTopInnerEdge ? clampedTopCapInnerR : 0
+  const bottomEdgeRadius = hasBottomInnerEdge ? clampedBottomCapInnerR : 0
+  const showTopInnerChamfer = topEdgeRadius > 0.001 && topEdgeRadius < outerRadius - chamferSize
+  const showBottomInnerChamfer = bottomEdgeRadius > 0.001 && bottomEdgeRadius < outerRadius - chamferSize
 
   // MeshPhysicalMaterial: clearcoat layer adds a sharp specular highlight on top
   const material = useMemo(() =>
@@ -41,13 +91,16 @@ export default function HollowCylinder({ params }: Props) {
     <group>
       {/* Outer cylindrical wall */}
       <mesh material={material} castShadow receiveShadow>
-        <cylinderGeometry args={[OUTER_RADIUS, OUTER_RADIUS, height, RADIAL_SEGMENTS, 1, true]} />
+        <cylinderGeometry args={[outerRadius, outerRadius, wallHeight, RADIAL_SEGMENTS, 1, true]} />
       </mesh>
 
       {/* Inner cylindrical wall */}
       <mesh material={material} castShadow receiveShadow>
-        <cylinderGeometry args={[innerRadius, innerRadius, height, RADIAL_SEGMENTS, 1, true]} />
+        <cylinderGeometry args={[innerRadius, innerRadius, wallHeight, RADIAL_SEGMENTS, 1, true]} />
       </mesh>
+
+      <ChamferRing material={material} radius={outerRadius} y={sceneHeight / 2} direction="top" side="outer" size={chamferSize} />
+      <ChamferRing material={material} radius={outerRadius} y={-sceneHeight / 2} direction="bottom" side="outer" size={chamferSize} />
 
       {/* Top cap */}
       {showTopCap && (
@@ -55,11 +108,18 @@ export default function HollowCylinder({ params }: Props) {
           material={material}
           castShadow
           receiveShadow
-          position={[0, height / 2, 0]}
+          position={[0, sceneHeight / 2, 0]}
           rotation={[-Math.PI / 2, 0, 0]}
         >
-          <ringGeometry args={[topCapInnerR, OUTER_RADIUS, RADIAL_SEGMENTS]} />
+          {topCapInnerRadius > 0 ? (
+            <ringGeometry args={[topCapInnerRadius, capOuterRadius, RADIAL_SEGMENTS]} />
+          ) : (
+            <circleGeometry args={[capOuterRadius, RADIAL_SEGMENTS]} />
+          )}
         </mesh>
+      )}
+      {showTopInnerChamfer && (
+        <ChamferRing material={material} radius={topEdgeRadius} y={sceneHeight / 2} direction="top" side="inner" size={chamferSize} />
       )}
 
       {/* Bottom cap */}
@@ -68,11 +128,18 @@ export default function HollowCylinder({ params }: Props) {
           material={material}
           castShadow
           receiveShadow
-          position={[0, -height / 2, 0]}
+          position={[0, -sceneHeight / 2, 0]}
           rotation={[Math.PI / 2, 0, 0]}
         >
-          <ringGeometry args={[bottomCapInnerR, OUTER_RADIUS, RADIAL_SEGMENTS]} />
+          {bottomCapInnerRadius > 0 ? (
+            <ringGeometry args={[bottomCapInnerRadius, capOuterRadius, RADIAL_SEGMENTS]} />
+          ) : (
+            <circleGeometry args={[capOuterRadius, RADIAL_SEGMENTS]} />
+          )}
         </mesh>
+      )}
+      {showBottomInnerChamfer && (
+        <ChamferRing material={material} radius={bottomEdgeRadius} y={-sceneHeight / 2} direction="bottom" side="inner" size={chamferSize} />
       )}
     </group>
   )

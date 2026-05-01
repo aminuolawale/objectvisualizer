@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import type { CylinderParams } from './App'
 
 // ── Slider ────────────────────────────────────────────────────────────────────
@@ -9,17 +10,40 @@ interface SliderProps {
   max: number
   step: number
   unit?: string
+  decimals?: number
   disabled?: boolean
   onChange: (v: number) => void
 }
 
-function Slider({ label, value, min, max, step, unit = '', disabled, onChange }: SliderProps) {
-  const pct = ((value - min) / (max - min)) * 100
+function Slider({ label, value, min, max, step, unit = '', decimals = 1, disabled, onChange }: SliderProps) {
+  const pct = max > min ? ((value - min) / (max - min)) * 100 : 0
+
+  const handleNumberChange = (rawValue: string) => {
+    if (rawValue === '') return
+
+    const nextValue = Number(rawValue)
+    if (Number.isFinite(nextValue)) {
+      onChange(nextValue)
+    }
+  }
+
   return (
     <div className={`ctrl-row${disabled ? ' ctrl-disabled' : ''}`}>
       <div className="ctrl-header">
         <span className="ctrl-label">{label}</span>
-        <span className="ctrl-value">{value.toFixed(2)}{unit}</span>
+        <label className="ctrl-number-wrap">
+          <input
+            type="number"
+            className="ctrl-number"
+            min={min}
+            max={max}
+            step={step}
+            value={value.toFixed(decimals)}
+            disabled={disabled}
+            onChange={e => handleNumberChange(e.target.value)}
+          />
+          <span className="ctrl-unit">{unit.trim()}</span>
+        </label>
       </div>
       <input
         type="range"
@@ -30,7 +54,7 @@ function Slider({ label, value, min, max, step, unit = '', disabled, onChange }:
         value={value}
         disabled={disabled}
         onChange={e => onChange(Number(e.target.value))}
-        style={{ '--pct': `${pct}%` } as React.CSSProperties}
+        style={{ '--pct': `${pct}%` } as CSSProperties}
       />
     </div>
   )
@@ -69,6 +93,7 @@ function Segment({ label, options, value, onChange }: SegmentProps) {
 interface Props {
   params: CylinderParams
   onChange: (p: CylinderParams) => void
+  mobileHidden?: boolean
 }
 
 const FACE_OPTIONS = [
@@ -81,14 +106,37 @@ const HOLE_FACE_OPTIONS = [
   { id: 'bottom', label: 'Bottom' },
 ]
 
-export default function Controls({ params, onChange }: Props) {
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
+
+export default function Controls({ params, onChange, mobileHidden = false }: Props) {
+  const maxWallThickness = Math.max(0.1, params.diameter / 2 - 0.1)
+  const maxHoleDiameter = Math.max(0, params.diameter - 0.2)
+
   const set = <K extends keyof CylinderParams>(key: K) =>
-    (value: CylinderParams[K]) => onChange({ ...params, [key]: value })
+    (value: CylinderParams[K]) => {
+      const next = { ...params, [key]: value }
+
+      if (key === 'diameter') {
+        const diameter = value as number
+        next.wallThickness = clamp(params.wallThickness, 0.1, Math.max(0.1, diameter / 2 - 0.1))
+        next.holeDiameter = clamp(params.holeDiameter, 0, Math.max(0, diameter - 0.2))
+      }
+
+      if (key === 'wallThickness') {
+        next.wallThickness = clamp(value as number, 0.1, maxWallThickness)
+      }
+
+      if (key === 'holeDiameter') {
+        next.holeDiameter = clamp(value as number, 0, maxHoleDiameter)
+      }
+
+      onChange(next)
+    }
 
   const holeFaceIsOpen = params.holeFace === 'top' ? params.topOpen : params.bottomOpen
 
   return (
-    <aside className="ctrl-panel">
+    <aside className={`ctrl-panel${mobileHidden ? ' ctrl-panel-mobile-hidden' : ''}`}>
       {/* Header */}
       <header className="ctrl-title">
         <span className="ctrl-brand">AO.</span>
@@ -99,19 +147,30 @@ export default function Controls({ params, onChange }: Props) {
       <div className="ctrl-section">
         <p className="ctrl-section-heading">Geometry</p>
         <Slider
+          label="Diameter"
+          value={params.diameter}
+          min={2}
+          max={20}
+          step={0.1}
+          unit=" cm"
+          onChange={set('diameter')}
+        />
+        <Slider
           label="Wall Thickness"
           value={params.wallThickness}
-          min={0.02}
-          max={0.97}
-          step={0.01}
+          min={0.1}
+          max={maxWallThickness}
+          step={0.1}
+          unit=" cm"
           onChange={set('wallThickness')}
         />
         <Slider
           label="Height"
           value={params.height}
-          min={0.2}
-          max={4.0}
-          step={0.05}
+          min={1}
+          max={20}
+          step={0.1}
+          unit=" cm"
           onChange={set('height')}
         />
       </div>
@@ -150,8 +209,9 @@ export default function Controls({ params, onChange }: Props) {
           label="Diameter"
           value={params.holeDiameter}
           min={0}
-          max={1.9}
-          step={0.01}
+          max={maxHoleDiameter}
+          step={0.1}
+          unit=" cm"
           disabled={holeFaceIsOpen}
           onChange={set('holeDiameter')}
         />
