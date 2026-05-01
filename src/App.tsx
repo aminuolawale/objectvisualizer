@@ -2,8 +2,8 @@ import { useState, useRef } from 'react'
 import * as THREE from 'three'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, ContactShadows, Environment } from '@react-three/drei'
-import { STLExporter } from 'three/examples/jsm/exporters/STLExporter'
-import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter'
+import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js'
+import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js'
 import HollowCylinder from './HollowCylinder'
 import Controls from './Controls'
 
@@ -124,7 +124,7 @@ export default function App() {
   const handleExport = (format: 'stl' | 'obj') => {
     if (!modelRef.current) return
 
-    let data: string | Uint8Array
+    let data: string | Uint8Array | DataView
     let filename = `cylinder-${params.diameter}x${params.height}`
     let mimeType = 'text/plain'
 
@@ -140,7 +140,7 @@ export default function App() {
       mimeType = 'text/plain'
     }
 
-    const blob = new Blob([data], { type: mimeType })
+    const blob = new Blob([data as any], { type: mimeType })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url

@@ -398,6 +398,37 @@ body {
   text-align: center;
 }
 
+.ctrl-export-group {
+  display: flex;
+  gap: 8px;
+}
+
+.ctrl-btn-outline {
+  flex: 1;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid rgba(252, 158, 79, 0.28);
+  color: var(--color-accent);
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+  white-space: nowrap;
+}
+
+.ctrl-btn-outline:hover {
+  background: rgba(252, 158, 79, 0.08);
+  border-color: rgba(252, 158, 79, 0.55);
+  box-shadow: 0 0 0 2px rgba(252, 158, 79, 0.12);
+}
+
+.ctrl-btn-outline:active {
+  background: rgba(252, 158, 79, 0.16);
+  transform: translateY(1px);
+}
+
 @media (max-width: 720px) {
   .app-toolbar {
     right: 14px;
