@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ComponentProps } from 'react'
 import * as THREE from 'three'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, ContactShadows, Environment } from '@react-three/drei'
@@ -24,6 +24,15 @@ const DEFAULT_PARAMS: CylinderParams = {
   holeDiameter: 0,
   holeFace: 'top',
 }
+
+const ssaoProps = {
+  blendFunction: BlendFunction.MULTIPLY,
+  samples: 24,
+  radius: 0.06,
+  intensity: 14,
+  luminanceInfluence: 0.4,
+  bias: 0.025,
+} as ComponentProps<typeof SSAO>
 
 export default function App() {
   const [params, setParams] = useState<CylinderParams>(DEFAULT_PARAMS)
@@ -81,14 +90,7 @@ export default function App() {
         />
 
         <EffectComposer>
-          <SSAO
-            blendFunction={BlendFunction.MULTIPLY}
-            samples={24}
-            radius={0.06}
-            intensity={14}
-            luminanceInfluence={0.4}
-            bias={0.025}
-          />
+          <SSAO {...ssaoProps} />
         </EffectComposer>
 
         <OrbitControls
