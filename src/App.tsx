@@ -1,9 +1,7 @@
-import { useState, type ComponentProps } from 'react'
+import { useState } from 'react'
 import * as THREE from 'three'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, ContactShadows, Environment } from '@react-three/drei'
-import { EffectComposer, SSAO } from '@react-three/postprocessing'
-import { BlendFunction } from 'postprocessing'
 import HollowCylinder from './HollowCylinder'
 import Controls from './Controls'
 
@@ -93,15 +91,6 @@ function buildPreviewUrl(params: CylinderParams, showDimensions: boolean) {
   return url.toString()
 }
 
-const ssaoProps = {
-  blendFunction: BlendFunction.MULTIPLY,
-  samples: 24,
-  radius: 0.06,
-  intensity: 14,
-  luminanceInfluence: 0.4,
-  bias: 0.025,
-} as ComponentProps<typeof SSAO>
-
 export default function App() {
   const initialPreview = paramsFromUrl()
   const [params, setParams] = useState<CylinderParams>(initialPreview.params)
@@ -178,10 +167,6 @@ export default function App() {
           color="#000018"
           frames={1}
         />
-
-        <EffectComposer enableNormalPass>
-          <SSAO {...ssaoProps} />
-        </EffectComposer>
 
         <OrbitControls
           enablePan={false}

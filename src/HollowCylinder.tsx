@@ -73,7 +73,6 @@ function DimensionLabels({ params, outerRadius, innerRadius, sceneHeight, hasVis
   const frontZ = outerRadius + 0.28
   const topY = yTop + 0.18
   const wallY = yTop + 0.08
-  const witness = 0.10
   const wallMidRadius = (outerRadius + innerRadius) / 2
   const holeY = params.holeFace === 'top' ? yTop + 0.08 : yBottom - 0.08
   const holeLabelY = params.holeFace === 'top' ? yTop + 0.22 : yBottom - 0.22
@@ -82,25 +81,17 @@ function DimensionLabels({ params, outerRadius, innerRadius, sceneHeight, hasVis
   return (
     <group>
       <DimensionLine points={[[sideX, yBottom, 0], [sideX, yTop, 0]]} />
-      <DimensionLine points={[[outerRadius, yTop, 0], [sideX + witness, yTop, 0]]} />
-      <DimensionLine points={[[outerRadius, yBottom, 0], [sideX + witness, yBottom, 0]]} />
       <Label position={[sideX + 0.18, 0, 0]}>{`Height ${formatCm(params.height)}`}</Label>
 
       <DimensionLine points={[[-outerRadius, topY, frontZ], [outerRadius, topY, frontZ]]} />
-      <DimensionLine points={[[-outerRadius, yTop, 0], [-outerRadius, topY + witness, frontZ]]} />
-      <DimensionLine points={[[outerRadius, yTop, 0], [outerRadius, topY + witness, frontZ]]} />
       <Label position={[0, topY + 0.11, frontZ]}>{`Diameter ${formatCm(params.diameter)}`}</Label>
 
       <DimensionLine points={[[innerRadius, wallY, 0], [outerRadius, wallY, 0]]} />
-      <DimensionLine points={[[innerRadius, yTop, 0], [innerRadius, wallY + witness, 0]]} />
-      <DimensionLine points={[[outerRadius, yTop, 0], [outerRadius, wallY + witness, 0]]} />
       <Label position={[wallMidRadius, yTop + 0.18, 0]}>{`Wall ${formatCm(params.wallThickness)}`}</Label>
 
       {hasVisibleHole && (
         <>
           <DimensionLine points={[[-holeRadius, holeY, -frontZ], [holeRadius, holeY, -frontZ]]} />
-          <DimensionLine points={[[-holeRadius, holeY, 0], [-holeRadius, holeY, -frontZ - witness]]} />
-          <DimensionLine points={[[holeRadius, holeY, 0], [holeRadius, holeY, -frontZ - witness]]} />
           <Label position={[0, holeLabelY, -frontZ]}>{`Hole ${formatCm(params.holeDiameter)}`}</Label>
         </>
       )}
